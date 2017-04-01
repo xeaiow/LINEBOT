@@ -42,6 +42,26 @@ $app->post('/', function ($request, $response)
 	$httpClient = new \LINE\LINEBot\HTTPClient\CurlHTTPClient($_ENV['CHANNEL_ACCESS_TOKEN']);
 	$bot = new \LINE\LINEBot($httpClient, ['channelSecret' => $_ENV['CHANNEL_SECRET']]);
 
+	// match array string
+	function strpos_array($haystack, $needle) {
+		if ( is_array($needle) ) {
+			foreach ( $needle as $need ) {
+				if ( strpos( $haystack, $need ) !== false ) {
+					return true;
+				}
+			}
+		}else {
+			if (strpos($haystack, $need) !== false) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// db connect
+	$db = new PDO( 'mysql:host=localhost;dbname=xeeecopl_linebot;charset=utf8', 'xeeecopl_xeaiow', 'a9b9c8d1' );
+
 	$data = json_decode($body, true);
 
 	foreach ( $data['events'] as $event ) {
@@ -55,13 +75,37 @@ $app->post('/', function ($request, $response)
 					// 如果訊息是文字
 					case 'text':
 
-						if (strpos($event['message']['text'], "愛你") !== false ) {
+						$ubike = array("ubike", "單車", "youbike", "微笑單車", "腳踏車", "bicycle");
+						$area  = array("中壢", "桃園", "平鎮", "龍潭", "楊梅", "新屋", "觀音", "龜山", "八德", "大溪", "大園", "蘆竹", "復興");
+						$request_text = $event['message']['text']; // Client 輸入的字串
 
-							$result = $bot->replyText( $event['replyToken'], "我也是唷～" );
+						if ( strpos_array($request_text, $ubike) ) {
+
+							$result = $bot->replyText( $event['replyToken'], "找Ubike嗎？ ex. 中壢區");
 						}
-						else{
+						else if ( strpos_array($request_text, $area) ) {
 
-							$result = $bot->replyText( $event['replyToken'], $event['message']['text'] );
+							$ubike_data = json_decode(file_get_contents("http://data.tycg.gov.tw/api/v1/rest/datastore/a1b4714b-3b75-4ff8-a8f2-cc377e4eaa0f?format=json"), true);
+
+								foreach ($ubike_data['result']['records'] as $data) {
+
+									if ($request_text == $data['sarea']) {
+
+										$str .= $data['sna']."\t".", 剩 ".$data['sbi']."台"."\n\n";
+									}
+
+							    }
+								$result = $bot->replyText( $event['replyToken'], $str);
+
+						}
+						else {
+
+							$result = $bot->replyText( $event['replyToken'], "我不懂意思耶。");
+							// $query 		  = $db->prepare("SELECT address FROM shop WHERE name = ?");
+							// $query->execute(array($request_text));
+							// $re 	  	  = $query->fetch(PDO::FETCH_OBJ);
+							//
+							// $result = $bot->replyText( $event['replyToken'], $re->address );
 						}
 						break;
 
